@@ -12,7 +12,10 @@ We use a distilled version of the OpenAI GPT-2 model. [GPT-2](https://cdn.openai
 
 *TODO*
 
-1. Fine-tune DistilGPT-2 on 
+1. Fine-tune DistilGPT-2 on Poke-Dataset.
+    ```
+    python train.py --mode train --data_file poke.txt --output_dir logs
+    ```
 
 
 # Prerequisites 
