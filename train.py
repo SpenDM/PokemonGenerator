@@ -1,7 +1,6 @@
 # https://github.com/huggingface/transformers/blob/master/examples/text-generation/run_generation.py
 import os
 import math
-import argparse
 
 from config import Config
 from transformers import (
@@ -94,61 +93,39 @@ class PokedexGenerator():
     
 
     def predict(self):
-        args.length = adjust_length_to_model(args.length, max_sequence_length=model.config.max_position_embeddings)
+        assert self.model.config.max_position_embeddings > self.opts.length
 
-        prompt_text = args.prompt 
-
-        encoded_prompt = tokenizer.encode(prompt_text, add_special_tokens=False, return_tensors="pt")
-        encoded_prompt = encoded_prompt.to(args.device)
-
-        if encoded_prompt.size()[-1] == 0:
-            input_ids = None
+        # Encode prompt
+        if self.opts.prompt is not None:
+            encoded_prompt = self.tokenizer.encode(self.opts.prompt, add_special_tokens=False, return_tensors="pt")
+            encoded_prompt = encoded_prompt # TODO Cuda
         else:
-            input_ids = encoded_prompt
-
-        output_sequences = model.generate(
-            input_ids=input_ids,
-            max_length=args.length + len(encoded_prompt[0]),
-            temperature=args.temperature,
-            top_k=args.k,
-            top_p=args.p,
-            repetition_penalty=args.repetition_penalty,
+            encoded_prompt = None
+        
+        # Generate sequence
+        seq = self.model.generate(
+            input_ids=encoded_prompt,
+            max_length=self.opts.length + len(encoded_prompt[0]),
+            temperature=self.opts.temperature,
             do_sample=True,
-            num_return_sequences=args.num_return_sequences,
+            # num_return_sequences=args.num_return_sequences,
         )
+        seq = seq.squeeze().tolist()
 
-        # Remove the batch dimension when returning multiple sequences
-        if len(output_sequences.shape) > 2:
-            output_sequences.squeeze_()
+        # Decode text
+        text = self.tokenizer.decode(seq, clean_up_tokenization_spaces=True)
+        print("-\n%s\n-\n" % text)
 
-        generated_sequences = []
+        # Remove all text after the stop token
+        # text = text[: text.find(args.stop_token) if args.stop_token else None]
 
-        for generated_sequence_idx, generated_sequence in enumerate(output_sequences):
-            print("=== GENERATED SEQUENCE {} ===".format(generated_sequence_idx + 1))
-            generated_sequence = generated_sequence.tolist()
-
-            # Decode text
-            text = tokenizer.decode(generated_sequence, clean_up_tokenization_spaces=True)
-
-            # Remove all text after the stop token
-            text = text[: text.find(args.stop_token) if args.stop_token else None]
-
-            # Add the prompt at the beginning of the sequence. Remove the excess text that was used for pre-processing
-            total_sequence = (
-                prompt_text + text[len(tokenizer.decode(encoded_prompt[0], clean_up_tokenization_spaces=True)) :]
-            )
-
-            generated_sequences.append(total_sequence)
-            print(total_sequence)
-
-        return generated_sequences
-
+        return text
 
 
 if __name__ == "__main__":
     config = Config()
     opts = config.parse()
-    g = PokdexGenerator(opts)
+    g = PokedexGenerator(opts)
     if opts.mode == 'train':
         g.train()
     elif opts.mode == 'eval':
