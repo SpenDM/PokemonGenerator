@@ -70,7 +70,7 @@ def main(opts):
     model.resize_token_embeddings(len(tokenizer))
 
     # Get datasets
-    dataset = TextDataset( # LineByLineTextDataset?
+    dataset = LineByLineTextDataset( # TextDataset
         tokenizer=tokenizer, 
         file_path=opts.data_file, 
         block_size=tokenizer.max_len
